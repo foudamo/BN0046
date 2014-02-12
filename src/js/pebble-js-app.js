@@ -41,7 +41,7 @@ function loadLocalData() {
   mConfig.KEY_WEEKDAY_NON_US_DD_MM = parseInt(localStorage.getItem("KEY_WEEKDAY_NON_US_DD_MM"));
   mConfig.KEY_SHOW_MOON = parseInt(localStorage.getItem("KEY_SHOW_MOON"));
   mConfig.KEY_INVERSE = parseInt(localStorage.getItem("KEY_INVERSE"));
-  mConfig.configureUrl = "http://ryck.github.io/BN0046/configure.html";
+  mConfig.configureUrl = "http://ryck.github.io/BN0046/config.html";
 
   if(isNaN(mConfig.KEY_SHOW_SECONDS)) {
     mConfig.KEY_SHOW_SECONDS = 1;
