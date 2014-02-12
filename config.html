@@ -9,6 +9,11 @@
             if(isNaN(mSeconds)) {
               mSeconds = 1;
             }
+            if(mSeconds) {
+                $('#show-seconds').bootstrapSwitch('setState', true);
+            } else {
+                $('#show-seconds').bootstrapSwitch('setState', false);
+            }
         });
 
           $("#configure-form").submit(function(e) {
