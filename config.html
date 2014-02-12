@@ -1,30 +1,30 @@
 <!DOCTYPE html><!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]--><!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]--><!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]--><!--[if gt IE 8]><!--><html class=no-js><!--<![endif]--><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><title>BN0046</title><meta name=description content=""><meta name=viewport content="width=device-width"><!-- Place favicon.ico and apple-touch-icon.png in the root directory --><link rel=stylesheet href=styles/vendor.css><link rel=stylesheet href=styles/main.css><script src=bower_components/modernizr/modernizr.js></script><body class=config><!--[if lt IE 10]>
             <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]--><div id=configure-form class="container config-container"><form class="form-horizontal form-config" role=form><div class=form-group><label for=show-seconds class="col-sm-2 control-label">Show Seconds</label><div class=col-sm-6><input type=checkbox name=show-seconds id=show-seconds checked></div></div><div class=form-group><div class="col-sm-offset-2 col-sm-10"><button type=submit class="btn btn-default">Save</button></div></div></form></div><script src=scripts/vendor.js></script><script>var mSeconds;
+        <![endif]--><div id=configure-form class="container config-container"><form class="form-horizontal form-config" role=form><div class=form-group><label for=show-date class="col-sm-2 control-label">Show date</label><div class=col-sm-6><input type=checkbox name=show-date id=show-date checked></div></div><div class=form-group><div class="col-sm-offset-2 col-sm-10"><button type=submit class="btn btn-default">Save</button></div></div></form></div><script src=scripts/vendor.js></script><script>var mDate;
 
           $().ready(function () {
 
-            mSeconds = parseInt(localStorage.getItem("seconds"));
+            mDate = parseInt(localStorage.getItem("date"));
 
-            if(isNaN(mSeconds)) {
-              mSeconds = 1;
+            if(isNaN(mDate)) {
+              mDate = 1;
             }
-            if(mSeconds) {
-                $('#show-seconds').bootstrapSwitch('setState', true);
+            if(mDate) {
+                $('#show-date').bootstrapSwitch('setState', true);
             } else {
-                $('#show-seconds').bootstrapSwitch('setState', false);
+                $('#show-date').bootstrapSwitch('setState', false);
             }
         });
 
           $("#configure-form").submit(function(e) {
 
-            mSeconds = $('#show-seconds').prop('checked') ? 1 : 0;
+            mDate = $('#show-date').prop('checked') ? 1 : 0;
 
-            localStorage.setItem("seconds", mSeconds);
+            localStorage.setItem("date", mDate);
 
 
             var j = {
-              KEY_SHOW_DATE : parseInt(mSeconds),
+              KEY_SHOW_DATE : parseInt(mDate),
             };
 
             console.log(JSON.stringify(j));
