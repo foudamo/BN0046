@@ -6,7 +6,7 @@
     "versionCode": 2,
     "versionLabel": "2.0.1",
     "capabilities": [
-        ""
+        "configurable"
     ],
     "companyName": "ryck",
     "watchapp": {
@@ -68,6 +68,61 @@
                 "type": "png",
                 "name": "IMAGE_NUM_0",
                 "file": "images/0.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_COLONi",
+                "file": "images/Coloni.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_9i",
+                "file": "images/9i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_8i",
+                "file": "images/8i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_7i",
+                "file": "images/7i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_6i",
+                "file": "images/6i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_5i",
+                "file": "images/5i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_4i",
+                "file": "images/4i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_3i",
+                "file": "images/3i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_2i",
+                "file": "images/2i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_1i",
+                "file": "images/1i.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_0i",
+                "file": "images/0i.png"
             },
             {
                 "menuIcon": true,
