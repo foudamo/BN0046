@@ -10,22 +10,18 @@ static uint8_t sync_buffer[64];
 
 #define NUMBER_OF_IMAGES 10
 
-enum {
-  KEY_SHOW_SECONDS = 0x0,
-  KEY_SHOW_DATE = 0x1,
-  KEY_WEEKDAY_US_MM_DD = 0x2,
-  KEY_WEEKDAY_NON_US_DD_MM = 0x3,
-  KEY_SHOW_MOON = 0x4,
-  KEY_INVERSE = 0x5
-};
-
 // Configuration
-static int SHOW_SECONDS;
-static int SHOW_DATE;
+static int show_seconds;
+static int show_date;
 static int WEEKDAY_US_MM_DD;
 static int WEEKDAY_NON_US_DD_MM;
 static int SHOW_MOON;
 static int INVERSE;
+
+enum {
+  DATE_KEY = 0x0,
+  SECONDS_KEY = 0x1
+};
 
 #if (INVERSE == 1)
   #define BGCOLOR GColorWhite
@@ -63,26 +59,33 @@ static TextLayer *seconds; // Seconds Layer
 
 #define EMPTY_SLOT -1
 
+static void sync_error_callback(DictionaryResult dict_error, AppMessageResult app_message_error, void *context) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Error: %d", app_message_error);
+}
+
 static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tuple, const Tuple* old_tuple, void* context) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Callback: [key=%lu][value=%u]", key, new_tuple->value->uint8);
   switch (key) {
-    case KEY_SHOW_SECONDS:
-      SHOW_SECONDS = new_tuple->value->uint8;
+    case DATE_KEY:
+      show_date = new_tuple->value->uint8;
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "show_date:%u", show_date);
       break;
-    case KEY_SHOW_DATE:
-      SHOW_DATE = new_tuple->value->uint8;
+    case SECONDS_KEY:
+      show_seconds = new_tuple->value->uint8;
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "show_seconds: %u", show_seconds);
       break;
-    case KEY_WEEKDAY_US_MM_DD:
-      WEEKDAY_US_MM_DD = new_tuple->value->uint8;
-      break;
-    case KEY_WEEKDAY_NON_US_DD_MM:
-      WEEKDAY_NON_US_DD_MM = new_tuple->value->uint8;
-      break;
-    case KEY_SHOW_MOON:
-      SHOW_MOON = new_tuple->value->uint8;
-      break;
-    case KEY_INVERSE:
-      INVERSE = new_tuple->value->uint8;
-      break;
+    // case KEY_WEEKDAY_US_MM_DD:
+    //   WEEKDAY_US_MM_DD = new_tuple->value->uint8;
+    //   break;
+    // case KEY_WEEKDAY_NON_US_DD_MM:
+    //   WEEKDAY_NON_US_DD_MM = new_tuple->value->uint8;
+    //   break;
+    // case KEY_SHOW_MOON:
+    //   SHOW_MOON = new_tuple->value->uint8;
+    //   break;
+    // case KEY_INVERSE:
+    //   INVERSE = new_tuple->value->uint8;
+    //   break;
   }
 }
 
@@ -129,7 +132,12 @@ static void update_display_minutes(struct tm *tick_time) {
 static void update_display_hours(struct tm *tick_time) {
   unsigned short display_hour = get_display_hour(tick_time->tm_hour);
 
-  set_container_image(&images[0], image_layers[0], IMAGE_RESOURCE_IDS[display_hour/10], GPoint(2, 54));
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "display_hour:%u", display_hour);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "display_hour/10:%u", display_hour/10);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "display_hour10:%u", display_hour%10);
+  if(display_hour >= 10) {
+    set_container_image(&images[0], image_layers[0], IMAGE_RESOURCE_IDS[display_hour/10], GPoint(2, 54));
+  }
   set_container_image(&images[1], image_layers[1], IMAGE_RESOURCE_IDS[display_hour%10], GPoint(34, 54));
 }
 
@@ -165,23 +173,9 @@ void update_display_month(struct tm *tick_time) {
   text_layer_set_text(month, month_text);
 }
 
-static void layer_setup(struct tm *tick_time) {
-
-  #if SHOW_DATE
-    update_display_day(tick_time);
-    update_display_month(tick_time);
-  #endif
-  update_display_hours(tick_time);
-  update_display_minutes(tick_time);
-  #if SHOW_SECONDS
-    update_display_seconds(tick_time);
-  #endif
-
-}
-
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 
-  if ((units_changed & SECOND_UNIT) != 0 && SHOW_SECONDS) {
+  if ((units_changed & SECOND_UNIT) != 0 && show_seconds) {
     update_display_seconds(tick_time);
   }
 
@@ -193,23 +187,27 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
     update_display_hours(tick_time);
   }
 
-  if ((units_changed & DAY_UNIT) != 0) {
-    #if SHOW_DATE
+  if (show_date) {
       update_display_day(tick_time);
       update_display_month(tick_time);
-    #endif
     #if SHOW_MOON
       // update_display_moon(tick_time);
     #endif
   }
 
-  if ((units_changed & MONTH_UNIT) != 0 && SHOW_DATE) {
+  if ((units_changed & MONTH_UNIT) != 0 && show_date) {
     update_display_month(tick_time);
   }
 
 }
 
-static void window_load(Window *window) {
+static void init(void) {
+
+  const int inbound_size = 128;
+  const int outbound_size = 128;
+  app_message_open(inbound_size, outbound_size);
+
+  window = window_create();
 
   window_set_background_color(window, BGCOLOR);
 
@@ -261,10 +259,30 @@ static void window_load(Window *window) {
   // Avoids a blank screen on watch start.
   time_t now = time(NULL);
   struct tm *tick_time = localtime(&now);
-  layer_setup(tick_time);
+  handle_tick(tick_time, DAY_UNIT + HOUR_UNIT + MINUTE_UNIT + SECOND_UNIT);
+
+  Tuplet initial_values[] = {
+    TupletInteger(SECONDS_KEY, (uint8_t) 1),
+    TupletInteger(DATE_KEY, (uint8_t) 1)
+    // TupletInteger(KEY_WEEKDAY_US_MM_DD, 0),
+    // TupletInteger(KEY_WEEKDAY_NON_US_DD_MM, 0),
+    // TupletInteger(KEY_SHOW_MOON, 0)
+  };
+
+  app_sync_init(&sync, sync_buffer, sizeof(sync_buffer), initial_values, ARRAY_LENGTH(initial_values),
+    sync_tuple_changed_callback, sync_error_callback, NULL);
+
+  //Subscribe to events
+  tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
+
+  //Finally
+  window_stack_push(window, true);
 }
 
-static void window_unload(Window *window) {
+static void deinit() {
+
+  app_sync_deinit(&sync);
+
   for (int i = 0; i < TOTAL_IMAGE_SLOTS; i++) {
     layer_remove_from_parent(bitmap_layer_get_layer(image_layers[i]));
     gbitmap_destroy(images[i]);
@@ -278,35 +296,6 @@ static void window_unload(Window *window) {
   text_layer_destroy(month);
 
   tick_timer_service_unsubscribe();
-}
-
-static void init(void) {
-
-  window = window_create();
-  WindowHandlers handlers = {
-    .load = window_load,
-    .unload = window_unload
-  };
-  window_set_window_handlers(window, (WindowHandlers) handlers);
-
-  Tuplet initial_values[] = {
-    TupletInteger(KEY_SHOW_SECONDS, 1),
-    TupletInteger(KEY_SHOW_DATE, 1),
-    TupletInteger(KEY_WEEKDAY_US_MM_DD, 0),
-    TupletInteger(KEY_WEEKDAY_NON_US_DD_MM, 0),
-    TupletInteger(KEY_SHOW_MOON, 0)
-  };
-
-  app_sync_init(&sync, sync_buffer, sizeof(sync_buffer), initial_values, ARRAY_LENGTH(initial_values), sync_tuple_changed_callback, NULL, NULL);
-
-  //Subscribe to events
-  tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
-
-  //Finally
-  window_stack_push(window, true);
-}
-
-static void deinit() {
 
   window_destroy(window);
 

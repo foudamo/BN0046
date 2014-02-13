@@ -5,6 +5,10 @@
     "shortName": "BN0046",
     "versionCode": 2,
     "versionLabel": "2.0.1",
+    "appKeys": {
+        "seconds": 1,
+        "date": 0
+    },
     "capabilities": [
         "configurable"
     ],
