@@ -41,10 +41,13 @@
               KEY_SHOW_SECONDS: parseInt(mSeconds)
             };
 
+            window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(j));
+
+
             var location = "pebblejs://close#" + JSON.stringify(j);
             console.log("Warping to: " + location);
             console.log(location);
-            document.location = location;
+            // document.location = location;
 
             e.preventDefault();
           });</script><!-- Google Analytics: change UA-XXXXX-X to be your site's ID. --><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
