@@ -37,11 +37,11 @@
             localStorage.setItem("seconds", mSeconds);
 
             var j = {
-              seconds: parseInt(mSeconds),
-              date : parseInt(mDate)
+              show_date : parseInt(mDate),
+              show_seconds : parseInt(mSeconds)
             };
 
-            window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(j));
+            window.location.href = "pebblejs://close#" + JSON.stringify(j);
 
 
             var location = "pebblejs://close#" + JSON.stringify(j);
