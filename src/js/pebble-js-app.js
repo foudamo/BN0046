@@ -81,10 +81,10 @@ function loadLocalData() {
 
   // console.log("loadLocalData() " + JSON.stringify(mConfig));
 }
-function returnConfigToPebble() {
-  console.log("Configuration window returned: " + JSON.stringify(mConfig));
-  Pebble.sendAppMessage({
-    "date":parseInt(mConfig.date),
-    "seconds":parseInt(mConfig.seconds)
-  });
-}
+// function returnConfigToPebble() {
+//   console.log("Configuration window returned: " + JSON.stringify(mConfig));
+//   Pebble.sendAppMessage({
+//     "date":parseInt(mConfig.date),
+//     "seconds":parseInt(mConfig.seconds)
+//   });
+// }
