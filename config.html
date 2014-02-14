@@ -38,7 +38,7 @@
                 $('#show-moon').bootstrapSwitch('state', false);
             }
 
-            mDateFormat = parseInt(localStorage.getItem("date-format"));
+            mDateFormat = parseInt(localStorage.getItem("format"));
             if(isNaN(mDateFormat)) {
               mDateFormat = 1;
             }
@@ -78,17 +78,17 @@
             localStorage.setItem("moon", mMoon);
 
             mDateFormat = $('input[name=date-format]:checked', '#configure-form').val()
-            localStorage.setItem("date-format", mDateFormat);
+            localStorage.setItem("format", mDateFormat);
 
             mInverse = $('#inverse').prop('checked') ? 1 : 0;
-            localStorage.setItem("inverse", mSeconds);
+            localStorage.setItem("inverse", mInverse);
 
             var j = {
               show_date : parseInt(mDate),
               show_seconds : parseInt(mSeconds),
               show_moon : parseInt(mMoon),
-              date_format: parseInt(mDateFormat),
-              inverse: parseInt(mInverse)
+              date_format : parseInt(mDateFormat),
+              inverse : parseInt(mInverse)
             };
 
             window.location.href = "pebblejs://close#" + JSON.stringify(j);
