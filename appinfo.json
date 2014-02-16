@@ -3,8 +3,8 @@
     "shortName": "BN0046",
     "longName": "BN0046",
     "companyName": "ryck.me",
-    "versionCode": 3,
-    "versionLabel": "2.0.1",
+    "versionCode": 4,
+    "versionLabel": "2.1",
     "watchapp": {
         "watchface": true
     },
