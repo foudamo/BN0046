@@ -1,49 +1,37 @@
 #include "pebble.h"
 
 static Window *window;
+static Layer *window_layer;
 
 static AppSync sync;
-static uint8_t sync_buffer[64];
-
+static uint8_t sync_buffer[80];
 
 #define TOTAL_IMAGE_SLOTS 4
-
 #define NUMBER_OF_IMAGES 10
 
 // Configuration
-static int show_seconds;
-static int show_date;
-static int WEEKDAY_US_MM_DD;
-static int WEEKDAY_NON_US_DD_MM;
-static int SHOW_MOON;
-static int INVERSE;
+static int show_date = 1;
+static int show_seconds = 1;
+static int show_moon = 0;
+static int date_format = 1;
 
 enum {
   DATE_KEY = 0x0,
-  SECONDS_KEY = 0x1
+  SECONDS_KEY = 0x1,
+  MOON_KEY = 0x2,
+  DATEFORMAT_KEY = 0x3
 };
 
-#if (INVERSE == 1)
-  #define BGCOLOR GColorWhite
-  #define FGCOLOR GColorBlack
-  const int IMAGE_RESOURCE_IDS[NUMBER_OF_IMAGES] = {
-    RESOURCE_ID_IMAGE_NUM_0i, RESOURCE_ID_IMAGE_NUM_1i, RESOURCE_ID_IMAGE_NUM_2i,
-    RESOURCE_ID_IMAGE_NUM_3i, RESOURCE_ID_IMAGE_NUM_4i, RESOURCE_ID_IMAGE_NUM_5i,
-    RESOURCE_ID_IMAGE_NUM_6i, RESOURCE_ID_IMAGE_NUM_7i, RESOURCE_ID_IMAGE_NUM_8i,
-    RESOURCE_ID_IMAGE_NUM_9i
-  };
-  #define COLON RESOURCE_ID_IMAGE_COLONi
-#else
-  #define BGCOLOR GColorBlack
-  #define FGCOLOR GColorWhite
-  const int IMAGE_RESOURCE_IDS[NUMBER_OF_IMAGES] = {
-    RESOURCE_ID_IMAGE_NUM_0, RESOURCE_ID_IMAGE_NUM_1, RESOURCE_ID_IMAGE_NUM_2,
-    RESOURCE_ID_IMAGE_NUM_3, RESOURCE_ID_IMAGE_NUM_4, RESOURCE_ID_IMAGE_NUM_5,
-    RESOURCE_ID_IMAGE_NUM_6, RESOURCE_ID_IMAGE_NUM_7, RESOURCE_ID_IMAGE_NUM_8,
-    RESOURCE_ID_IMAGE_NUM_9
-  };
-  #define COLON RESOURCE_ID_IMAGE_COLON
-#endif
+
+#define BGCOLOR GColorBlack
+#define FGCOLOR GColorWhite
+const int IMAGE_RESOURCE_IDS[NUMBER_OF_IMAGES] = {
+  RESOURCE_ID_IMAGE_NUM_0, RESOURCE_ID_IMAGE_NUM_1, RESOURCE_ID_IMAGE_NUM_2,
+  RESOURCE_ID_IMAGE_NUM_3, RESOURCE_ID_IMAGE_NUM_4, RESOURCE_ID_IMAGE_NUM_5,
+  RESOURCE_ID_IMAGE_NUM_6, RESOURCE_ID_IMAGE_NUM_7, RESOURCE_ID_IMAGE_NUM_8,
+  RESOURCE_ID_IMAGE_NUM_9
+};
+#define COLON RESOURCE_ID_IMAGE_COLON
 
 static GBitmap *images[TOTAL_IMAGE_SLOTS];
 static BitmapLayer *image_layers[TOTAL_IMAGE_SLOTS];
@@ -51,41 +39,60 @@ static BitmapLayer *image_layers[TOTAL_IMAGE_SLOTS];
 GBitmap *cursor_bitmap;
 BitmapLayer *cursor_layer;
 
-static TextLayer *month;   // Month Layer
-static TextLayer *day;    // Date Layer
-// static TextLayer *ampm;    // AM/PM Layer
-static TextLayer *seconds; // Seconds Layer
+static TextLayer *month_layer;   // Month Layer
+static TextLayer *day_layer;    // Date Layer
+static TextLayer *ampm_layer;    // AM/PM Layer
+static TextLayer *seconds_layer; // Seconds Layer
 // static TextLayer *moon;    // Moon Layer
 
 #define EMPTY_SLOT -1
 
+static void handle_tick(struct tm *tick_time, TimeUnits units_changed);
+
+
 static void sync_error_callback(DictionaryResult dict_error, AppMessageResult app_message_error, void *context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Error: %d", app_message_error);
+  // APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Error: %d", app_message_error);
 }
 
 static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tuple, const Tuple* old_tuple, void* context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Callback: [key=%lu][value=%u]", key, new_tuple->value->uint8);
+  // APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Callback: [key=%lu][value=%u]", key, new_tuple->value->uint8);
   switch (key) {
     case DATE_KEY:
       show_date = new_tuple->value->uint8;
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "show_date:%u", show_date);
+      if(show_date) {
+        layer_set_hidden((Layer *) day_layer, false);
+        layer_set_hidden((Layer *) month_layer, false);
+      }
+      else {
+        layer_set_hidden((Layer *) day_layer, true);
+        layer_set_hidden((Layer *) month_layer, true);
+      }
+      // APP_LOG(APP_LOG_LEVEL_DEBUG, "show_date:%u", show_date);
       break;
     case SECONDS_KEY:
       show_seconds = new_tuple->value->uint8;
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "show_seconds: %u", show_seconds);
+      // APP_LOG(APP_LOG_LEVEL_DEBUG, "show_seconds:%u", show_seconds);
+      tick_timer_service_unsubscribe();
+      if(show_seconds) {
+        tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
+        layer_set_hidden((Layer *) seconds_layer, false);
+      }
+      else {
+        tick_timer_service_subscribe(MINUTE_UNIT, handle_tick);
+        layer_set_hidden((Layer *) seconds_layer, true);
+      }
       break;
-    // case KEY_WEEKDAY_US_MM_DD:
-    //   WEEKDAY_US_MM_DD = new_tuple->value->uint8;
-    //   break;
-    // case KEY_WEEKDAY_NON_US_DD_MM:
-    //   WEEKDAY_NON_US_DD_MM = new_tuple->value->uint8;
-    //   break;
-    // case KEY_SHOW_MOON:
-    //   SHOW_MOON = new_tuple->value->uint8;
-    //   break;
-    // case KEY_INVERSE:
-    //   INVERSE = new_tuple->value->uint8;
-    //   break;
+    case DATEFORMAT_KEY:
+      date_format = new_tuple->value->uint8;
+      time_t now = time(NULL);
+      struct tm *tick_time = localtime(&now);
+      handle_tick(tick_time, DAY_UNIT);
+      // APP_LOG(APP_LOG_LEVEL_DEBUG, "date_format:%u", date_format);
+      break;
+    case MOON_KEY:
+      show_moon = new_tuple->value->uint8;
+      // APP_LOG(APP_LOG_LEVEL_DEBUG, "show_moon:%u", show_moon);
+      break;
   }
 }
 
@@ -119,9 +126,11 @@ static unsigned short get_display_hour(unsigned short hour) {
 }
 
 static void update_display_seconds(struct tm *tick_time) {
+  // APP_LOG(APP_LOG_LEVEL_DEBUG, "show_seconds:%u", show_seconds);
   static char seconds_text[] = "00";
   strftime(seconds_text, sizeof(seconds_text), "%S", tick_time);
-  text_layer_set_text(seconds, seconds_text);
+  text_layer_set_text(seconds_layer, seconds_text);
+
 }
 
 static void update_display_minutes(struct tm *tick_time) {
@@ -132,45 +141,47 @@ static void update_display_minutes(struct tm *tick_time) {
 static void update_display_hours(struct tm *tick_time) {
   unsigned short display_hour = get_display_hour(tick_time->tm_hour);
 
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "display_hour:%u", display_hour);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "display_hour/10:%u", display_hour/10);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "display_hour10:%u", display_hour%10);
   if(display_hour >= 10) {
     set_container_image(&images[0], image_layers[0], IMAGE_RESOURCE_IDS[display_hour/10], GPoint(2, 54));
   }
   set_container_image(&images[1], image_layers[1], IMAGE_RESOURCE_IDS[display_hour%10], GPoint(34, 54));
+
+  static char am_pm_text[] = "PM";
+
+  // AM/PM
+  strftime(am_pm_text, sizeof(am_pm_text), "%p", tick_time);
+
+  if (!clock_is_24h_style()) {
+    text_layer_set_text(ampm_layer, am_pm_text);
+  }
 }
 
 void update_display_day(struct tm *tick_time) {
-  // Day
-  #if (WEEKDAY_US_MM_DD || WEEKDAY_NON_US_DD_MM)
-      static char date_text[] = "00.00";
-  #else
-      static char date_text[] = "00";
-  #endif
 
-  #if   WEEKDAY_US_MM_DD           // Show Date in "MM-DD" (US date format)
-      strftime(date_text, sizeof(date_text), "%m-%d", tick_time);
-  #elif WEEKDAY_NON_US_DD_MM       // Show Date in "DD-MM" (INTL_DD_MM)
-      strftime(date_text, sizeof(date_text), "%d-%m", tick_time);
-  #else                            // Show Day of Month (no Leading 0)
-      strftime(date_text, sizeof(date_text), "%e", tick_time);
-  #endif
+  static char date_text[] = "00.00";
 
-    text_layer_set_text(day, date_text);
+  if (date_format == 3) {
+    strftime(date_text, sizeof(date_text), "%m-%d", tick_time);
+  } else if (date_format == 2) {
+    strftime(date_text, sizeof(date_text), "%d-%m", tick_time);
+  } else {
+    strftime(date_text, sizeof(date_text), "%e", tick_time);
+  }
+
+    text_layer_set_text(day_layer, date_text);
 }
 
 void update_display_month(struct tm *tick_time) {
   // Month or Weekday
   static char month_text[] = "AAA";
 
-  #if (WEEKDAY_US_MM_DD || WEEKDAY_NON_US_DD_MM) // Show Weekday (3 letter abbrev)
+  if (date_format == 2 || date_format == 3) {         // Show Weekday (3 letter abbrev)
       strftime(month_text, sizeof(month_text), "%a", tick_time);
-  #else // Show Month (3 letter abbrev)
+  } else { // Show Month (3 letter abbrev)
       strftime(month_text, sizeof(month_text), "%b", tick_time);
-  #endif
+  }
 
-  text_layer_set_text(month, month_text);
+  text_layer_set_text(month_layer, month_text);
 }
 
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -187,31 +198,27 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
     update_display_hours(tick_time);
   }
 
-  if (show_date) {
-      update_display_day(tick_time);
-      update_display_month(tick_time);
-    #if SHOW_MOON
-      // update_display_moon(tick_time);
-    #endif
-  }
-
-  if ((units_changed & MONTH_UNIT) != 0 && show_date) {
+  if ((units_changed & DAY_UNIT) != 0) {
+    update_display_day(tick_time);
     update_display_month(tick_time);
+    // #if SHOW_MOON
+    //   update_display_moon(tick_time);
+    // #endif
   }
 
 }
 
 static void init(void) {
 
-  const int inbound_size = 128;
-  const int outbound_size = 128;
+  const int inbound_size = 80;
+  const int outbound_size = 80;
   app_message_open(inbound_size, outbound_size);
 
   window = window_create();
 
   window_set_background_color(window, BGCOLOR);
 
-  Layer *parent = window_get_root_layer(window);
+  window_layer = window_get_root_layer(window);
 
   memset(&image_layers, 0, sizeof(image_layers));
   memset(&images, 0, sizeof(images));
@@ -219,7 +226,7 @@ static void init(void) {
   GRect dummy_frame = { {0, 0}, {0, 0} };
   for (int i = 0; i < TOTAL_IMAGE_SLOTS; ++i) {
     image_layers[i] = bitmap_layer_create(dummy_frame);
-    layer_add_child(parent, bitmap_layer_get_layer(image_layers[i]));
+    layer_add_child(window_layer, bitmap_layer_get_layer(image_layers[i]));
   }
 
   // Load Fonts
@@ -230,47 +237,48 @@ static void init(void) {
   // Climaicons - Moon
   // ResHandle custom_moonfont30 = resource_get_handle(RESOURCE_ID_CLIMAICONS30);
 
-  seconds = text_layer_create(GRect(90, 92, 60, 60));
-  text_layer_set_background_color(seconds, GColorClear);
-  text_layer_set_text_color(seconds, FGCOLOR);
-  text_layer_set_font(seconds, fonts_load_custom_font(font_seconds));
-  layer_add_child(parent, text_layer_get_layer(seconds));
+  seconds_layer = text_layer_create(GRect(90, 90, 60, 60));
+  text_layer_set_background_color(seconds_layer, GColorClear);
+  text_layer_set_text_color(seconds_layer, FGCOLOR);
+  text_layer_set_font(seconds_layer, fonts_load_custom_font(font_seconds));
+  layer_add_child(window_layer, text_layer_get_layer(seconds_layer));
 
-  day = text_layer_create(GRect(45, 25, 60, 30));
-  text_layer_set_background_color(day, GColorClear);
-  text_layer_set_text_color(day, FGCOLOR);
-  text_layer_set_font(day, fonts_load_custom_font(font_date));
-  layer_add_child(parent, text_layer_get_layer(day));
+  day_layer = text_layer_create(GRect(45, 25, 60, 30));
+  text_layer_set_background_color(day_layer, GColorClear);
+  text_layer_set_text_color(day_layer, FGCOLOR);
+  text_layer_set_font(day_layer, fonts_load_custom_font(font_date));
+  layer_add_child(window_layer, text_layer_get_layer(day_layer));
 
-  month = text_layer_create(GRect(0, 25, 60, 30));
-  text_layer_set_background_color(month, GColorClear);
-  text_layer_set_text_color(month, FGCOLOR);
-  text_layer_set_font(month, fonts_load_custom_font(font_date));
-  layer_add_child(parent, text_layer_get_layer(month));
+  month_layer = text_layer_create(GRect(5, 25, 60, 30));
+  text_layer_set_background_color(month_layer, GColorClear);
+  text_layer_set_text_color(month_layer, FGCOLOR);
+  text_layer_set_font(month_layer, fonts_load_custom_font(font_date));
+  layer_add_child(window_layer, text_layer_get_layer(month_layer));
 
-  //Load bitmaps into GBitmap structures
-  //The ID you chose when uploading is prefixed with 'RESOURCE_ID_'
+  ampm_layer = text_layer_create(GRect(5, 102, 30, 30));
+  text_layer_set_background_color(ampm_layer, GColorClear);
+  text_layer_set_text_color(ampm_layer, FGCOLOR);
+  text_layer_set_font(ampm_layer, fonts_load_custom_font(font_date));
+  layer_add_child(window_layer, text_layer_get_layer(ampm_layer));
 
   cursor_bitmap = gbitmap_create_with_resource(COLON);
-  cursor_layer = bitmap_layer_create(GRect(64, 64, 6, 46));
+  cursor_layer = bitmap_layer_create(GRect(65, 64, 6, 46));
   bitmap_layer_set_bitmap(cursor_layer, cursor_bitmap);
-  layer_add_child(parent, bitmap_layer_get_layer(cursor_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(cursor_layer));
+
+  Tuplet initial_values[] = {
+    TupletInteger(DATE_KEY, 1),
+    TupletInteger(SECONDS_KEY, 1),
+    TupletInteger(MOON_KEY, 0),
+    TupletInteger(DATEFORMAT_KEY, 1)
+  };
+
+  app_sync_init(&sync, sync_buffer, sizeof(sync_buffer), initial_values, ARRAY_LENGTH(initial_values), sync_tuple_changed_callback, sync_error_callback, NULL);
 
   // Avoids a blank screen on watch start.
   time_t now = time(NULL);
   struct tm *tick_time = localtime(&now);
   handle_tick(tick_time, DAY_UNIT + HOUR_UNIT + MINUTE_UNIT + SECOND_UNIT);
-
-  Tuplet initial_values[] = {
-    TupletInteger(SECONDS_KEY, (uint8_t) 1),
-    TupletInteger(DATE_KEY, (uint8_t) 1)
-    // TupletInteger(KEY_WEEKDAY_US_MM_DD, 0),
-    // TupletInteger(KEY_WEEKDAY_NON_US_DD_MM, 0),
-    // TupletInteger(KEY_SHOW_MOON, 0)
-  };
-
-  app_sync_init(&sync, sync_buffer, sizeof(sync_buffer), initial_values, ARRAY_LENGTH(initial_values),
-    sync_tuple_changed_callback, sync_error_callback, NULL);
 
   //Subscribe to events
   tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
@@ -291,9 +299,10 @@ static void deinit() {
   gbitmap_destroy(cursor_bitmap);
   bitmap_layer_destroy(cursor_layer);
 
-  text_layer_destroy(seconds);
-  text_layer_destroy(day);
-  text_layer_destroy(month);
+  text_layer_destroy(seconds_layer);
+  text_layer_destroy(day_layer);
+  text_layer_destroy(month_layer);
+  text_layer_destroy(ampm_layer);
 
   tick_timer_service_unsubscribe();
 

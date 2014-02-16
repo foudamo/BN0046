@@ -1,10 +1,11 @@
 var mConfig = {};
+var options = {};
 
 Pebble.addEventListener("ready", function(e) {
-  console.log("BN0046 is ready");
-  console.log("Pebble Account Token: " + Pebble.getAccountToken());
+  // console.log("BN0046 is ready");
+  // console.log("Pebble Account Token: " + Pebble.getAccountToken());
   loadLocalData();
-  // returnConfigToPebble();
+  returnConfigToPebble();
 });
 
 Pebble.addEventListener("showConfiguration", function(e) {
@@ -16,21 +17,11 @@ Pebble.addEventListener("webviewclosed",
     if (e.response) {
       var config = JSON.parse(e.response);
       saveLocalData(config);
-      // returnConfigToPebble();
-      console.log("configuration closed");
+      returnConfigToPebble();
+      // console.log("configuration closed");
       // webview closed
-      var options = JSON.parse(e.response);
-      Pebble.sendAppMessage(options,
-          function(e) {
-            console.log("Successfully delivered message with transactionId="
-              + e.data.transactionId);
-          },
-          function(e) {
-            console.log("Unable to deliver message with transactionId="
-              + e.data.transactionId
-              + " Error is: " + e.error.message);
-          });
-      console.log("Options = " + JSON.stringify(options));
+      // options = JSON.parse(e.response);
+      // console.log("Options = " + JSON.stringify(options));
 
     }
   }
@@ -38,53 +29,44 @@ Pebble.addEventListener("webviewclosed",
 
 function saveLocalData(config) {
 
-  console.log("loadLocalData() " + JSON.stringify(config));
+  console.log("saveLocalData() " + JSON.stringify(config));
 
-  localStorage.setItem("seconds", parseInt(config.seconds));
-  localStorage.setItem("date", parseInt(config.date));
-  // localStorage.setItem("KEY_WEEKDAY_US_MM_DD", parseInt(config.KEY_WEEKDAY_US_MM_DD));
-  // localStorage.setItem("KEY_WEEKDAY_NON_US_DD_MM", parseInt(config.KEY_WEEKDAY_NON_US_DD_MM));
-  // localStorage.setItem("KEY_SHOW_MOON", parseInt(config.KEY_SHOW_MOON));
-  // localStorage.setItem("KEY_INVERSE", parseInt(config.KEY_INVERSE));
+  localStorage.setItem("date", parseInt(config.show_date));
+  localStorage.setItem("seconds", parseInt(config.show_seconds));
+  localStorage.setItem("format", parseInt(config.date_format));
+  localStorage.setItem("moon", parseInt(config.show_moon));
 
   loadLocalData();
 
 }
 function loadLocalData() {
 
-  mConfig.seconds = parseInt(localStorage.getItem("seconds"));
-  mConfig.date = parseInt(localStorage.getItem("date"));
-  // mConfig.KEY_WEEKDAY_US_MM_DD = parseInt(localStorage.getItem("KEY_WEEKDAY_US_MM_DD"));
-  // mConfig.KEY_WEEKDAY_NON_US_DD_MM = parseInt(localStorage.getItem("KEY_WEEKDAY_NON_US_DD_MM"));
-  // mConfig.KEY_SHOW_MOON = parseInt(localStorage.getItem("KEY_SHOW_MOON"));
-  // mConfig.KEY_INVERSE = parseInt(localStorage.getItem("KEY_INVERSE"));
+  mConfig.show_date = parseInt(localStorage.getItem("date"));
+  mConfig.show_seconds = parseInt(localStorage.getItem("seconds"));
+  mConfig.show_moon = parseInt(localStorage.getItem("moon"));
+  mConfig.date_format = parseInt(localStorage.getItem("format"));
 
-  if(isNaN(mConfig.seconds)) {
-    mConfig.seconds = 1;
+  if(isNaN(mConfig.show_date)) {
+    mConfig.show_date = 1;
   }
-  if(isNaN(mConfig.date)) {
-    mConfig.date = 1;
+  if(isNaN(mConfig.show_seconds)) {
+    mConfig.show_seconds = 1;
   }
-  // if(isNaN(mConfig.KEY_WEEKDAY_US_MM_DD)) {
-  //   mConfig.KEY_WEEKDAY_US_MM_DD = 0;
-  // }
-  // if(isNaN(mConfig.KEY_WEEKDAY_NON_US_DD_MM)) {
-  //   mConfig.KEY_WEEKDAY_NON_US_DD_MM = 0;
-  // }
-  // if(isNaN(mConfig.KEY_SHOW_MOON)) {
-  //   mConfig.KEY_SHOW_MOON = 0;
-  // }
-  // if(isNaN(mConfig.KEY_INVERSE)) {
-  //   mConfig.KEY_INVERSE = 0;
-  // }
-
+  if(isNaN(mConfig.date_format)) {
+    mConfig.date_format = 1;
+  }
+  if(isNaN(mConfig.show_moon)) {
+    mConfig.show_moon = 0;
+  }
 
   // console.log("loadLocalData() " + JSON.stringify(mConfig));
 }
-// function returnConfigToPebble() {
-//   console.log("Configuration window returned: " + JSON.stringify(mConfig));
-//   Pebble.sendAppMessage({
-//     "date":parseInt(mConfig.date),
-//     "seconds":parseInt(mConfig.seconds)
-//   });
-// }
+function returnConfigToPebble(e) {
+  // console.log("Configuration window returned: " + JSON.stringify(mConfig));
+  Pebble.sendAppMessage({
+    "show_date":parseInt(mConfig.show_date),
+    "show_seconds":parseInt(mConfig.show_seconds),
+    "show_moon":parseInt(mConfig.show_moon),
+    "date_format":parseInt(mConfig.date_format)
+  });
+}
