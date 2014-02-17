@@ -142,7 +142,10 @@ static void update_display_hours(struct tm *tick_time) {
   unsigned short display_hour = get_display_hour(tick_time->tm_hour);
 
   if(display_hour >= 10) {
+    layer_set_hidden((Layer *) image_layers[0], false);
     set_container_image(&images[0], image_layers[0], IMAGE_RESOURCE_IDS[display_hour/10], GPoint(2, 54));
+  } else {
+    layer_set_hidden((Layer *) image_layers[0], true);
   }
   set_container_image(&images[1], image_layers[1], IMAGE_RESOURCE_IDS[display_hour%10], GPoint(34, 54));
 
